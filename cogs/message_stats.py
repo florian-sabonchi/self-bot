@@ -2,6 +2,8 @@ import io
 from datetime import datetime, timedelta
 
 import discord
+import pytz
+
 from discord.ext import commands
 
 import matplotlib.pyplot as plt
@@ -36,7 +38,7 @@ class StatsCog(commands.Cog):
                         "year": {"$year": "$timestamp"},
                         "month": {"$month": "$timestamp"},
                         "day": {"$dayOfMonth": "$timestamp"},
-                        "hour": {"$hour": "$timestamp"}
+                        "hour": {"$hour": "$timestamp"},
                     },
                     "count": {"$sum": 1}
                 }
@@ -48,11 +50,17 @@ class StatsCog(commands.Cog):
 
         result = list(self.db.aggregate('messages', pipeline))
 
+        timezone = pytz.timezone('Europe/Berlin')
         past_hours = get_hours_from_current()
         message_count = [0] * 24
 
         for message in result:
-            result_hour = message['_id']['hour']
+            date = datetime(message['_id']['year'],
+                            message['_id']['month'],
+                            message['_id']['day'],
+                            message['_id']['hour'])
+
+            result_hour = date.replace(tzinfo=pytz.utc).astimezone(timezone).hour
             index = past_hours.index(result_hour)
             message_count[index] = message['count']
 
