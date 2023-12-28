@@ -16,3 +16,7 @@ class MongoDB:
     def find(self, collection_name, query=None):
         collection = self.db[collection_name]
         return collection.find(query or {})
+
+    def aggregate(self, collection_name, pipeline):
+        collection = self.db[collection_name]
+        return collection.aggregate(pipeline)

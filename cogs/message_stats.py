@@ -15,29 +15,49 @@ class StatsCog(commands.Cog):
         self.db = MongoDB()
 
     @commands.command("stats")
-    async def get_stats(self, ctx, member: discord.Member):
+    async def get_stats(self, ctx, author_id: int):
         past_24_hours = datetime.utcnow() - timedelta(hours=24)
-        current_time = datetime.utcnow()
 
-        results = self.db.find('messages', {
-            "author_id": member.id,
-            "timestamp_field": {
-                "$gte": past_24_hours,
-                "$lte": current_time
+        query = {
+            "author_id": author_id,
+            "timestamp": {"$gte": past_24_hours}
+        }
+
+        pipeline = [
+            {"$match": query},
+            {
+                "$group": {
+                    "_id": {
+                        "year": {"$year": "$timestamp"},
+                        "month": {"$month": "$timestamp"},
+                        "day": {"$dayOfMonth": "$timestamp"},
+                        "hour": {"$hour": "$timestamp"}
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {"_id.year": 1, "_id.month": 1, "_id.day": 1, "_id.hour": 1}
             }
-        })
+        ]
 
-        for result in results:
-            pass
+        result = list(self.db.aggregate('messages', pipeline))
 
-        hours = list(range(1, 25))
-        steps_walked = [5, 7, 9, 6, 8, 5, 4, 7, 9, 10, 12, 14, 15, 13, 11, 10, 9, 7, 6, 5, 4, 3, 2, 1]
-        plt.plot(hours, steps_walked, color='blue')
+        hours = []
+        message_count = []
+
+        for message in result:
+            hours.append(str(message['_id']['hour']))
+            message_count.append(message['count'])
+
+        plt.bar(hours, message_count, color='blue')
+
+        plt.xlabel('Time')
+        plt.ylabel('messages')
 
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         byte_array = buffer.getvalue()
-
         buffer.close()
 
         await ctx.send(file=discord.File(io.BytesIO(byte_array), 'image.png'))
