@@ -9,12 +9,17 @@ import matplotlib.pyplot as plt
 from mongo_db import MongoDB
 
 
+def get_hours_from_current():
+    current_hour = datetime.now().hour
+    return [(current_hour + i) % 24 for i in range(24)]
+
+
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = MongoDB()
 
-    @commands.command("stats")
+    @commands.command("message_stats")
     async def get_stats(self, ctx, author_id: int):
         past_24_hours = datetime.utcnow() - timedelta(hours=24)
 
@@ -43,17 +48,19 @@ class StatsCog(commands.Cog):
 
         result = list(self.db.aggregate('messages', pipeline))
 
-        hours = []
-        message_count = []
+        past_hours = get_hours_from_current()
+        message_hours = [str(hour) for hour in past_hours]
+        message_count = [0] * 24
 
         for message in result:
-            hours.append(str(message['_id']['hour']))
-            message_count.append(message['count'])
+            result_hour = message['_id']['hour']
+            index = past_hours.index(result_hour)
+            message_count[index] = message['count']
 
-        plt.bar(hours, message_count, color='blue')
+        plt.bar(message_hours, message_count, color='blue')
 
         plt.xlabel('Time')
-        plt.ylabel('messages')
+        plt.ylabel('Messages')
 
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
