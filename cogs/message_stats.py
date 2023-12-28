@@ -49,7 +49,6 @@ class StatsCog(commands.Cog):
         result = list(self.db.aggregate('messages', pipeline))
 
         past_hours = get_hours_from_current()
-        message_hours = [str(hour) for hour in past_hours]
         message_count = [0] * 24
 
         for message in result:
@@ -57,7 +56,8 @@ class StatsCog(commands.Cog):
             index = past_hours.index(result_hour)
             message_count[index] = message['count']
 
-        plt.bar(message_hours, message_count, color='blue')
+        plt.figure(figsize=(10, 5))
+        plt.bar([str(hour) for hour in past_hours], message_count, color='blue')
 
         plt.xlabel('Time')
         plt.ylabel('Messages')
